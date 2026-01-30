@@ -55,9 +55,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
 
             new File("downloads").mkdirs();
 
-            String uniqueName = "downloads/" + chatId + "_" + System.currentTimeMillis();
-            String outputTemplate = uniqueName + ".%(ext)s";
-            File expectedFile = new File(uniqueName + ".mp3");
+            String outputTemplate = "downloads/" + chatId + "_%(title).100s.%(ext)s";
 
             ProcessBuilder pb = new ProcessBuilder(
                 "D:\\Downloads\\yt-dlp.exe",
@@ -65,7 +63,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
                 "--no-playlist",
                 "-x",
                 "--audio-format", "mp3",
-                "--audio-quality", "128K",
+                "--audio-quality", "192K",
                 "--no-part",
                 "-o", outputTemplate,
                 url
@@ -75,8 +73,13 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
             Process process = pb.start();
             int exitCode = process.waitFor();
 
-            if(exitCode == 0 && expectedFile.exists() ) {
-                return expectedFile;
+            if(exitCode == 0) {
+                File dir = new File("downloads");
+                File[] files = dir.listFiles((d, name) -> name.startsWith(chatId + "_") && name.endsWith(".mp3"));
+
+                if(files != null && files.length > 0) {
+                    return files[0];
+                }
             }
 
         } catch (Exception e) 
@@ -87,9 +90,14 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     private void sendMp3(long chatId, File file) {
+        String cleanName = file.getName()
+                .replaceFirst("^\\d+_", "")
+                .replace(".mp3", " ");
+
         SendAudio audio = SendAudio.builder()
         .chatId(chatId)
         .audio(new InputFile(file))
+        .title(cleanName)
         .build();
 
         try {
