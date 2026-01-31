@@ -8,5 +8,15 @@
     "name": "bot.token",
     "type": "java.lang.String",
     "description": "A description for 'bot.token'"
+  },
+  {
+    "name": "ytdlp.path",
+    "type": "java.lang.String",
+    "description": "A description for 'ytdlp.path'"
+  },
+  {
+    "name": "ffmpeg.path",
+    "type": "java.lang.String",
+    "description": "A description for 'ffmpeg.path'"
   }
 ]}

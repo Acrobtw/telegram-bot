@@ -8,6 +8,8 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import com.nick.bot.service.YoutubeService;
+
 import java.io.File;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -18,75 +20,38 @@ import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 @Component
 public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     private final TelegramClient telegramClient;
-    private final String botUsername;
+    private final YoutubeService youtubeService;
 
 
-    public MyBot(@Value("${bot.token}") String botToken, @Value("${bot.name}") String botUsername) {
+    public MyBot(@Value("${bot.token}") String botToken, YoutubeService youtubeService) {
         this.telegramClient = new OkHttpTelegramClient(botToken);
-        this.botUsername = botUsername;
+        this.youtubeService = youtubeService;
     }
 
     @Override
     public void consume(Update update) {
-        if(update.hasMessage() && update.getMessage().hasText()) {
-            String url = update.getMessage().getText();
-            long chatId = update.getMessage().getChatId();
+        if (!update.hasMessage() || !update.getMessage().hasText()) return;
 
+        String url = update.getMessage().getText();
+        long chatId = update.getMessage().getChatId();
 
-            if(url.contains("youtube.com") || url.contains("youtu.be")) {
-               new Thread(() -> {
-                sendMessage(chatId, "⏳ Начинаю работу над твоим треком...");
-                File mp3File = downloadAudio(url, chatId);
-                if(mp3File != null && mp3File.exists()) {
-                    sendMp3(chatId, mp3File);
-                    mp3File.delete();
-                } else {
-                    sendMessage(chatId, "❌ Ошибка скачивания.");
-                }
-               }).start();
-            }
+        if(isYoutubeLink(url)) {
+            new Thread(() -> processAudioRequest(chatId, url)).start();
         }
     }
 
 
 
-    private File downloadAudio(String url, long chatId) {
-        try  {
+    private void processAudioRequest(long chatId, String url) {
+        sendMessage(chatId, "⏳ Работаю над твоим треком...");
+        File mp3File = youtubeService.downloadAudio(url, chatId);
 
-            new File("downloads").mkdirs();
-
-            String outputTemplate = "downloads/" + chatId + "_%(title).100s.%(ext)s";
-
-            ProcessBuilder pb = new ProcessBuilder(
-                "D:\\Downloads\\yt-dlp.exe",
-                "--ffmpeg-location", "D:\\Downloads\\ffmpeg-2026-01-29-git-c898ddb8fe-full_build\\ffmpeg\\bin",
-                "--no-playlist",
-                "-x",
-                "--audio-format", "mp3",
-                "--audio-quality", "192K",
-                "--no-part",
-                "-o", outputTemplate,
-                url
-            );
-
-            pb.inheritIO();
-            Process process = pb.start();
-            int exitCode = process.waitFor();
-
-            if(exitCode == 0) {
-                File dir = new File("downloads");
-                File[] files = dir.listFiles((d, name) -> name.startsWith(chatId + "_") && name.endsWith(".mp3"));
-
-                if(files != null && files.length > 0) {
-                    return files[0];
-                }
-            }
-
-        } catch (Exception e) 
-        {
-            e.printStackTrace();
+        if (mp3File != null && mp3File.exists()) {
+            sendMp3(chatId, mp3File);
+            mp3File.delete();
+        } else {
+            sendMessage(chatId, "❌ Ошибка скачивания.");
         }
-        return null;
     }
 
     private void sendMp3(long chatId, File file) {
@@ -109,6 +74,9 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
          }
     }
 
+    private boolean isYoutubeLink(String text) {
+        return text.contains("youtube.com") || text.contains("youte.be");
+    }
 
     private void sendMessage(long chatId, String text) {
         SendMessage message = SendMessage.builder()
