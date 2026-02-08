@@ -8,6 +8,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import com.nick.bot.commands.BotCommands;
 import com.nick.bot.service.YoutubeService;
 
 import java.io.File;
@@ -32,11 +33,23 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
     public void consume(Update update) {
         if (!update.hasMessage() || !update.getMessage().hasText()) return;
 
-        String url = update.getMessage().getText();
+        String text = update.getMessage().getText();
         long chatId = update.getMessage().getChatId();
+        String firstName = update.getMessage().getChat().getFirstName();
 
-        if(isYoutubeLink(url)) {
-            new Thread(() -> processAudioRequest(chatId, url)).start();
+        switch(text) {
+            case "/start":
+                sendMessage(chatId, String.format(BotCommands.START_TEMPLATE, firstName));
+                return;
+            case "/help":
+                sendMessage(chatId, String.format(BotCommands.HELP_TEMPLATE, firstName));
+                return;
+        }
+
+        if(isYoutubeLink(text)) {
+            new Thread(() -> processAudioRequest(chatId, text)).start();
+        } else {
+            sendMessage(chatId, "Пришли мне ссылку на YouTube или нажми /help");
         }
     }
 
@@ -50,7 +63,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
             sendMp3(chatId, mp3File);
             mp3File.delete();
         } else {
-            sendMessage(chatId, "❌ Ошибка скачивания.");
+            sendMessage(chatId, BotCommands.ERROR_DOWNLOAD);
         }
     }
 
@@ -82,6 +95,7 @@ public class MyBot implements LongPollingSingleThreadUpdateConsumer {
         SendMessage message = SendMessage.builder()
             .chatId(chatId)
             .text(text)
+            .parseMode("Markdown")
             .build();
 
         try {

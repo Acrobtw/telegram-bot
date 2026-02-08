@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 
+
 @SpringBootApplication
 public class MyBotApplication {
 
